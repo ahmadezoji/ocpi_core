@@ -1,17 +1,24 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
-from dotenv import load_dotenv
+from app.settings import OCPI_CORE_PORT
+from app.routes.locations import router
+from fastapi.middleware.cors import CORSMiddleware
 
+app = FastAPI()
 
-load_dotenv()
+# 🔒 Add CORS middleware here
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-app = FastAPI(title="OCPI Core Service", version="0.1.0")
+app.include_router(router)
 
-@app.get("/health", tags=["meta"])  # Simple health check
-async def health():
-    return {"status": "ok"}
-
-# Include OCPI related routers
-app.include_router(versions_router)
-
-# Entrypoint for uvicorn: uvicorn ocpi_core.app.main:app --reload
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=OCPI_CORE_PORT)

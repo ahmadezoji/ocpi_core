@@ -1,8 +1,8 @@
 from fastapi import APIRouter
-from app.utils.ocpi_response import ocpi_response
 from app.models.location import LocationBase, Coordinates
 from app.models.evse import EVSEBase
 from app.models.connector import ConnectorBase
+from app.utils.ocpi_response import ocpi_response
 
 router = APIRouter(prefix="/ocpi/2.2", tags=["ocpi"])
 
