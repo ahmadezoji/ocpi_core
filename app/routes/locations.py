@@ -1,36 +1,39 @@
 from fastapi import APIRouter
 from app.models.location import LocationBase, Coordinates
-from app.models.evse import EVSEBase
-from app.models.connector import ConnectorBase
+from app.models.evse import EVSEBase  # <-- import EVSEBase
+from app.repositories.charge_point_repository import ChargePointRepository
 from app.utils.ocpi_response import ocpi_response
 
 router = APIRouter(prefix="/ocpi/2.2", tags=["ocpi"])
 
+repo = ChargePointRepository()
+
+
 @router.get("/locations")
-def get_locations():
-    loc = LocationBase(
-        id="LOC-001",
-        name="Berlin SuperCharger",
-        address="Alexanderplatz 1",
-        city="Berlin",
-        country="DE",
-        coordinates=Coordinates(latitude=52.5219, longitude=13.4132),
-        evses=[
-            EVSEBase(
-                uid="EVSE-1",
-                evse_id="DE*ABC*E001",
-                status="AVAILABLE",
-                connectors=[
-                    ConnectorBase(
-                        id="1",
-                        standard="IEC_62196_T2",
-                        power_type="AC_3_PHASE",
-                        max_voltage=400,
-                        max_amperage=32,
-                        tariff_id="AC_STD"
-                    )
-                ]
-            )
-        ]
-    )
-    return ocpi_response([loc.to_json()])
+async def get_locations():
+    charge_points = await repo.fetch_charge_points()
+    locations = []
+    if len(charge_points) == 0 or "error" in charge_points:
+        return None
+    for cp in charge_points:
+        # Build EVSEs from charge point data
+        evse = EVSEBase(
+            uid=cp["charge_point_id"],
+            evse_id=cp["charge_point_id"],
+            status="AVAILABLE",  # or map from cp if available
+            connectors=cp["connectors"]
+        )
+        loc = LocationBase(
+            id=cp["charge_point_id"],
+            name=cp["name"],
+            address=cp["address"],
+            city=cp["city"],
+            country=cp["country"],
+            coordinates=Coordinates(
+                latitude=cp.get("latitude", None),
+                longitude=cp.get("longitude",None)
+            ),
+            evses=[evse.to_json()]
+        )
+        locations.append(loc.to_json())
+    return ocpi_response(locations)
